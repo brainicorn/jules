@@ -1,0 +1,4 @@
+package: github.com/brainicorn/jules
+
+import:
+- package: github.com/xeipuuv/gojsonschema
