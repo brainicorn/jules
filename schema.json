@@ -2,19 +2,6 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "array",
   "definitions": {
-    "github_com-brainicorn-jules-AddAction": {
-      "type": "object",
-      "properties": {
-        "add": {
-          "type": "string"
-        },
-        "value": {}
-      },
-      "required": [
-        "add",
-        "value"
-      ]
-    },
     "github_com-brainicorn-jules-Composite": {
       "type": "object",
       "properties": {
@@ -58,8 +45,27 @@
       },
       "required": [
         "path",
+        "op"
+      ]
+    },
+    "github_com-brainicorn-jules-FromToAction": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string"
+        },
+        "op": {
+          "type": "string",
+          "pattern": "^move$|^copy$"
+        },
+        "to": {
+          "type": "string"
+        }
+      },
+      "required": [
         "op",
-        "value"
+        "from",
+        "to"
       ]
     },
     "github_com-brainicorn-jules-Jule": {
@@ -72,29 +78,62 @@
             "title": "Action is the base interface for an action.",
             "anyOf": [
               {
-                "$ref": "#/definitions/github_com-brainicorn-jules-AddAction"
+                "$ref": "#/definitions/github_com-brainicorn-jules-ValueAction"
               },
               {
-                "$ref": "#/definitions/github_com-brainicorn-jules-RemoveAction"
+                "$ref": "#/definitions/github_com-brainicorn-jules-PathAction"
+              },
+              {
+                "$ref": "#/definitions/github_com-brainicorn-jules-FromToAction"
               }
             ]
           }
         },
-        "conditions": {
-          "$ref": "#/definitions/github_com-brainicorn-jules-Composite"
+        "condition": {
+          "type": "object",
+          "title": "CompositeOrCondition is the base interface for a set of conditions.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/github_com-brainicorn-jules-Composite"
+            },
+            {
+              "$ref": "#/definitions/github_com-brainicorn-jules-Condition"
+            }
+          ]
         }
       }
     },
-    "github_com-brainicorn-jules-RemoveAction": {
+    "github_com-brainicorn-jules-PathAction": {
       "type": "object",
       "properties": {
-        "remove": {
+        "op": {
+          "type": "string",
+          "pattern": "^remove$"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "op",
+        "path"
+      ]
+    },
+    "github_com-brainicorn-jules-ValueAction": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "type": "string",
+          "pattern": "^add$|^replace$"
+        },
+        "path": {
           "type": "string"
         },
         "value": {}
       },
       "required": [
-        "remove",
+        "op",
+        "path",
         "value"
       ]
     }

@@ -12,32 +12,47 @@ import (
 type JuleSet []Jule
 
 type Jule struct {
-	Actions    []Action  `json:"actions"`
-	Conditions Composite `json:"conditions"`
+	Actions   []Action  `json:"actions"`
+	Condition CompositeOrCondition `json:"condition"`
 }
 
 // Action is the base interface for an action.
 //
 // @jsonSchema(
-// 	anyOf=["github.com/brainicorn/jules/AddAction"
-//  ,"github.com/brainicorn/jules/RemoveAction"]
+// 	anyOf=["github.com/brainicorn/jules/ValueAction"
+//  ,"github.com/brainicorn/jules/PathAction"
+//  ,"github.com/brainicorn/jules/FromToAction"]
 // )
 type Action interface{}
 
-type AddAction struct {
+type ValueAction struct {
+	// @jsonSchema(required=true, pattern="^add$|^replace$")
+	Operation string `json:"op"`
+
 	// @jsonSchema(required=true)
-	AddPath string `json:"add"`
+	Path string `json:"path"`
 
 	// @jsonSchema(required=true, type="any")
 	Value interface{} `json:"value"`
 }
 
-type RemoveAction struct {
-	// @jsonSchema(required=true)
-	RemovePath string `json:"remove"`
+type PathAction struct {
+	// @jsonSchema(required=true, pattern="^remove$")
+	Operation string `json:"op"`
 
-	// @jsonSchema(required=true, type="any")
-	Value interface{} `json:"value"`
+	// @jsonSchema(required=true)
+	Path string `json:"path"`
+}
+
+type FromToAction struct {
+	// @jsonSchema(required=true, pattern="^move$|^copy$")
+	Operation string `json:"op"`
+
+	// @jsonSchema(required=true)
+	From string `json:"from"`
+
+	// @jsonSchema(required=true)
+	To string `json:"to"`
 }
 
 // CompositeOrCondition is the base interface for a set of conditions.
@@ -64,8 +79,80 @@ type Condition struct {
 	// @jsonSchema(required=true, pattern="^eq$|^neq$|^gt$|^lt$|^gte$|^lte$|^exists$|^notexists$")
 	Operation string `json:"op"`
 
-	// @jsonSchema(required=true, type="any")
+	// @jsonSchema(type="any")
 	Value interface{} `json:"value"`
+}
+
+func (jul *Jule) UnmarshalJSON(data []byte) error {
+	var err error
+	var stuff map[string]interface{}
+	err = json.Unmarshal(data, &stuff)
+
+	if err == nil {
+		for k, v := range stuff {
+			switch k {
+			case "condition":
+				vv := v.(map[string]interface{})
+				var jsbytes []byte
+				jsbytes, err = json.Marshal(v)
+
+				if err == nil {
+					if _, hasMatch := vv["match"]; hasMatch {
+						var composite Composite
+						err = json.Unmarshal(jsbytes, &composite)
+
+						if err == nil {
+							jul.Condition = composite
+						}
+					} else {
+						var conditon Condition
+						err = json.Unmarshal(jsbytes, &conditon)
+
+						if err == nil {
+							jul.Condition = conditon
+						}
+					}
+				}
+
+			case "actions":
+				actionSlice := []Action{}
+				actions := v.([]interface{})
+				for _, a := range actions {
+					var jsbytes []byte
+					jsbytes, err = json.Marshal(a)
+
+					if err == nil {
+						if _, hasValue := a.(map[string]interface{})["value"]; hasValue {
+							var typedAction ValueAction
+							err = json.Unmarshal(jsbytes, &typedAction)
+
+							if err == nil {
+								actionSlice = append(actionSlice, typedAction)
+							}
+						} else if _, hasPath := a.(map[string]interface{})["path"]; hasPath {
+							var typedAction PathAction
+							err = json.Unmarshal(jsbytes, &typedAction)
+
+							if err == nil {
+								actionSlice = append(actionSlice, typedAction)
+							}
+						} else {
+							var typedAction FromToAction
+							err = json.Unmarshal(jsbytes, &typedAction)
+
+							if err == nil {
+								actionSlice = append(actionSlice, typedAction)
+							}
+						}
+					}
+
+				}
+				jul.Actions = actionSlice
+			}
+		}
+	}
+
+	return err
 }
 
 // UnmarshalJSON cretaes a template object from a JSON structure
@@ -137,7 +224,5 @@ func validateJuleSet(descriptorBytes []byte) (JuleSet, error) {
 		err = json.Unmarshal(descriptorBytes, &juleset)
 	}
 
-	b, _ := json.MarshalIndent(juleset, " ", "   ")
-	fmt.Println(string(b))
 	return juleset, err
 }

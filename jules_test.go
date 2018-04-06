@@ -12,15 +12,17 @@ const (
   {
     "actions": [
       {
-        "add": "meta.actions.delete",
+        "op": "add",
+		"path": "meta.actions.delete",
         "value": "anyone"
       },
       {
-        "add": "meta.actions.edit",
+        "op": "add",
+		"path": "meta.actions.edit",
         "value": "anyone"
       }
     ],
-    "conditions": {
+    "condition": {
       "match": "all",
       "conditions": [
         {
@@ -39,11 +41,12 @@ const (
   {
     "actions": [
       {
-        "add": "meta.decorations.labels[0]",
+        "op": "add",
+		"path": "meta.decorations.labels[0]",
         "value": "APP"
       }
     ],
-    "conditions": {
+    "condition": {
       "match": "all",
       "conditions": [
         {

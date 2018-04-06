@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"reflect"
 )
 
 type JulesMatcher struct {
@@ -16,11 +17,37 @@ func NewMatcher(jrules json.RawMessage) (*JulesMatcher, error) {
 
 	juleset, err = validateJuleSet(jrules)
 
-	if err == nil && len(juleset) < 1 {
+	if err == nil && (len(juleset) < 1 || numRootConditions(juleset) < 1) {
 		err = fmt.Errorf("No rules found")
 	}
 
 	return &JulesMatcher{Rules: juleset}, err
+}
+
+func numRootConditions(juleset JuleSet) int {
+	var num = 0
+
+	for _, jule := range juleset {
+		if hasConditions(jule.Condition) {
+			num++
+		}
+	}
+
+	return num
+}
+
+func hasConditions(c CompositeOrCondition) bool {
+	var emptyComposite Composite
+	var emptyCondition Condition
+
+	switch c.(type) {
+	case Condition:
+		return !reflect.DeepEqual(c, emptyCondition)
+	case Composite:
+		return !reflect.DeepEqual(c, emptyComposite)
+	}
+	return false
+
 }
 
 func (m *JulesMatcher) Match(payload json.RawMessage) (bool, error) {
@@ -60,7 +87,7 @@ func (m *JulesMatcher) MatchAt(payload json.RawMessage, rootPath string) (bool, 
 
 			if err == nil {
 				// we have a root, let's see if we can match everything
-				allMatched = applyRules(root, m.Rules)
+				allMatched = applyMatchRules(root, m.Rules)
 			}
 		}
 	}
@@ -72,7 +99,7 @@ func findRoot(obj map[string]interface{}, rootPath string) (map[string]interface
 	root := obj
 
 	if len(rootPath) > 0 {
-		if foundObj, wasFound := valueFromMapByDotPath(rootPath, obj); wasFound {
+		if foundObj, wasFound := getFromMapByDotPath(rootPath, obj); wasFound {
 			if rootObj, ok := foundObj.(map[string]interface{}); ok {
 				root = rootObj
 			}
@@ -84,11 +111,11 @@ func findRoot(obj map[string]interface{}, rootPath string) (map[string]interface
 	return root, (root != nil)
 }
 
-func applyRules(root map[string]interface{}, rules JuleSet) bool {
+func applyMatchRules(root map[string]interface{}, rules JuleSet) bool {
 	allMatched := true
 
 	for _, rule := range rules {
-		matched, _ := testCompositeOrCondition(root, rule.Conditions)
+		matched, _ := matchCompositeOrCondition(root, rule.Condition)
 		if !matched {
 			allMatched = false
 		}
@@ -97,58 +124,70 @@ func applyRules(root map[string]interface{}, rules JuleSet) bool {
 	return allMatched
 }
 
-func testCompositeOrCondition(root map[string]interface{}, corc CompositeOrCondition) (bool, []string) {
+func matchCompositeOrCondition(root map[string]interface{}, corc CompositeOrCondition) (bool, []string) {
 	var matched bool
 	var fails []string
 
 	switch corc.(type) {
 	case Composite:
-		matched, fails = testComposite(root, corc.(Composite))
+		matched, fails = matchComposite(root, corc.(Composite))
 
 	case Condition:
-		matched, fails = testCondition(root, corc.(Condition))
+		matched, fails = matchCondition(root, corc.(Condition))
 	}
 
 	return matched, fails
 }
 
-func testComposite(root map[string]interface{}, c Composite) (bool, []string) {
+func matchComposite(root map[string]interface{}, c Composite) (bool, []string) {
+	var matched bool
+	var fails []string
+
+Out:
 	switch c.Match {
 	case "all":
 		for _, corc := range c.Conditions {
-			b, _ := testCompositeOrCondition(root, corc)
+			b, _ := matchCompositeOrCondition(root, corc)
 
 			if !b {
-				return false, []string{}
+				matched = false
+				fails = []string{}
+				break Out
 			}
 		}
-		return true, []string{}
+		matched = true
+		fails = []string{}
+		break Out
 	case "any":
 		for _, corc := range c.Conditions {
-			b, _ := testCompositeOrCondition(root, corc)
+			b, _ := matchCompositeOrCondition(root, corc)
 
 			if b {
-				return true, []string{}
+				matched = true
+				fails = []string{}
+				break Out
 			}
 		}
-		return false, []string{}
+		matched = false
+		fails = []string{}
+		break Out
 	}
-	return false, []string{}
+	return matched, fails
 }
 
-func testCondition(root map[string]interface{}, c Condition) (bool, []string) {
+func matchCondition(root map[string]interface{}, c Condition) (bool, []string) {
 	var passed bool
 
 	switch c.Operation {
 	case "exists":
-		_,passed = valueFromMapByDotPath(c.Path, root)
+		_, passed = getFromMapByDotPath(c.Path, root)
 		break
 	case "notexists":
-		_,found := valueFromMapByDotPath(c.Path, root)
+		_, found := getFromMapByDotPath(c.Path, root)
 		passed = !found
 		break
 	default:
-		if valToCheck, foundVal := valueFromMapByDotPath(c.Path, root); foundVal {
+		if valToCheck, foundVal := getFromMapByDotPath(c.Path, root); foundVal {
 			if compFunc, gotComp := comparators[c.Operation]; gotComp {
 				passed = compFunc(valToCheck, c.Value)
 			}

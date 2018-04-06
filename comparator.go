@@ -1,3 +1,10 @@
+/*
+This file was originally written for the grules library.
+https://github.com/huttotw/grules
+
+Copyright © 2018 Trevor Hutto
+Licensed under the Apache License, Version 2.0 (the "License")
+*/
 package jules
 
 import (

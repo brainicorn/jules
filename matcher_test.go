@@ -8,10 +8,19 @@ import (
 )
 
 const (
-	simplePayload     = `{"foo":"bar"}`
-	nestedPayload     = `{"stuff":{"foo":"bar"}}`
-	deepNestedPayload = `{"stuff":{"morestuff":{"foo":"bar"}}}`
-	simpleRules       = `[{"conditions":{"match":"any", "conditions": [{"path": "foo","op": "eq", "value": "bar"}]}}]`
+	simplePayload            = `{"foo":"bar"}`
+	nestedPayload            = `{"stuff":{"foo":"bar"}}`
+	deepNestedPayload        = `{"stuff":{"morestuff":{"foo":"bar"}}}`
+	systemBobNamePayload     = `{"website":{"user":{"system":true,"name":"Bob"}}}`
+	systemBobUsernamePayload = `{"website":{"user":{"system":true,"username":"Bob"}}}`
+	systemNoNamePayload      = `{"website":{"user":{"system":true}}}`
+	humanBobPayload          = `{"website":{"user":{"system":false,"name":"Bob"}}}`
+	badBobPayload     = `{"website":{"user":{"system":true,"name":"Bob", "bad":true}}}`
+
+	fooEQBarRules = `[{"condition":{"match":"all", "conditions": [{"path": "foo","op": "eq", "value": "bar"}]}}]`
+	fooEQBarSingle = `[{"condition":{"path": "foo","op": "eq", "value": "bar"}}]`
+	emptyRules = `[{"condition":{"match":"all", "conditions": []}}]`
+	userNameRules = `[{"condition":{"match":"all", "conditions": [{"path":"user.system","op":"eq","value":true},{"path":"user.bad","op":"notexists"},{"match":"any","conditions":[{"path":"user.name","op":"exists"},{"path":"user.username","op":"exists"}]}]}}]`
 )
 
 var matchTests = []struct {
@@ -23,17 +32,57 @@ var matchTests = []struct {
 	expectedError error
 }{
 	{
+		"No Rules",
+		"",
+		"[{}]",
+		simplePayload,
+		false,
+		fmt.Errorf("No rules found"),
+	},
+//	{
+//		"Empty Rules",
+//		"",
+//		emptyRules,
+//		simplePayload,
+//		false,
+//		TODO make expected error,
+//	},
+	{
+		"Bad Payload",
+		"",
+		fooEQBarRules,
+		"yup",
+		false,
+		fmt.Errorf("payload must be a json object or a json array of objects"),
+	},
+	{
 		"Root Level",
 		"",
-		simpleRules,
+		fooEQBarRules,
 		simplePayload,
+		true,
+		nil,
+	},
+	{
+		"Root Level Single Condition",
+		"",
+		fooEQBarSingle,
+		simplePayload,
+		true,
+		nil,
+	},
+	{
+		"Array Root Level",
+		"",
+		fooEQBarRules,
+		"[" + simplePayload + "]",
 		true,
 		nil,
 	},
 	{
 		"Nested Root",
 		"stuff",
-		simpleRules,
+		fooEQBarRules,
 		nestedPayload,
 		true,
 		nil,
@@ -41,7 +90,7 @@ var matchTests = []struct {
 	{
 		"Deep Nested Root",
 		"stuff.morestuff",
-		simpleRules,
+		fooEQBarRules,
 		deepNestedPayload,
 		true,
 		nil,
@@ -49,14 +98,54 @@ var matchTests = []struct {
 	{
 		"Missing Root",
 		"notfound",
-		simpleRules,
+		fooEQBarRules,
 		nestedPayload,
 		false,
 		fmt.Errorf("root object not found at path 'notfound'"),
 	},
+	{
+		"System Bob Name",
+		"website",
+		userNameRules,
+		systemBobNamePayload,
+		true,
+		nil,
+	},
+	{
+		"System Bob Username",
+		"website",
+		userNameRules,
+		systemBobUsernamePayload,
+		true,
+		nil,
+	},
+	{
+		"System No Name",
+		"website",
+		userNameRules,
+		systemNoNamePayload,
+		false,
+		nil,
+	},
+	{
+		"Human Bob Name",
+		"website",
+		userNameRules,
+		humanBobPayload,
+		false,
+		nil,
+	},
+	{
+		"Bad Bob User",
+		"website",
+		userNameRules,
+		badBobPayload,
+		false,
+		nil,
+	},
 }
 
-func TestMatcher(t *testing.T) {
+func TestMatchAt(t *testing.T) {
 	var err error
 	var matcher *jules.JulesMatcher
 
@@ -64,19 +153,58 @@ func TestMatcher(t *testing.T) {
 		var matched bool
 		matcher, err = jules.NewMatcher([]byte(mt.rules))
 
-		if err != nil {
-			t.Error(err)
-			t.FailNow()
+		if err == nil {
+			matched, err = matcher.MatchAt([]byte(mt.payload), mt.rootPath)
 		}
 
-		matched, err = matcher.MatchAt([]byte(mt.payload), mt.rootPath)
+		if err != nil && (mt.expectedError == nil || (err.Error() != mt.expectedError.Error())) {
+			t.Errorf("%s - %s", mt.name, err)
+		}
 
-		if err != nil && err.Error() != mt.expectedError.Error() {
-			t.Error(err)
+		if mt.expectedError != nil && err == nil {
+			t.Errorf("%s - expected error '%s' but was nil", mt.name, mt.expectedError)
 		}
 
 		if matched != mt.expectedMatch {
 			t.Errorf("%s - mismatch matched for path: expected '%t', got '%t'", mt.name, mt.expectedMatch, matched)
 		}
+	}
+}
+
+func TestMatch(t *testing.T) {
+	mt := struct {
+		name          string
+		rootPath      string
+		rules         string
+		payload       string
+		expectedMatch bool
+		expectedError error
+	}{
+		"Match Test",
+		"",
+		fooEQBarRules,
+		simplePayload,
+		true,
+		nil,
+	}
+
+	var err error
+	var matcher *jules.JulesMatcher
+	var matched bool
+	matcher, err = jules.NewMatcher([]byte(mt.rules))
+
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	matched, err = matcher.Match([]byte(mt.payload))
+
+	if err != nil && (mt.expectedError == nil || (err.Error() != mt.expectedError.Error())) {
+		t.Errorf("%s - %s", mt.name, err)
+	}
+
+	if matched != mt.expectedMatch {
+		t.Errorf("%s - mismatch matched for path: expected '%t', got '%t'", mt.name, mt.expectedMatch, matched)
 	}
 }
