@@ -39,14 +39,6 @@ var matchTests = []struct {
 		false,
 		fmt.Errorf("No rules found"),
 	},
-//	{
-//		"Empty Rules",
-//		"",
-//		emptyRules,
-//		simplePayload,
-//		false,
-//		TODO make expected error,
-//	},
 	{
 		"Bad Payload",
 		"",

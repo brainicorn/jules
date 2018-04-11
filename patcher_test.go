@@ -1,25 +1,20 @@
 package jules_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/brainicorn/jules"
 )
 
 const (
-	patchChangeBarPayload = `{"foo":"bar"}`
-	//	nestedPayload            = `{"stuff":{"foo":"bar"}}`
-	//	deepNestedPayload        = `{"stuff":{"morestuff":{"foo":"bar"}}}`
-	//	systemBobNamePayload     = `{"website":{"user":{"system":true,"name":"Bob"}}}`
-	//	systemBobUsernamePayload = `{"website":{"user":{"system":true,"username":"Bob"}}}`
-	//	systemNoNamePayload      = `{"website":{"user":{"system":true}}}`
-	//	humanBobPayload          = `{"website":{"user":{"system":false,"name":"Bob"}}}`
-	//	badBobPayload     = `{"website":{"user":{"system":true,"name":"Bob", "bad":true}}}`
-
-	patchChangeBarRules = `[{"actions":[{"op":"replace","path":"foo","value":"fighters"}],"condition":{"path":"foo","op":"eq","value":"bar"}}]`
-	//	userNameRules = `[{"condition":{"match":"all", "conditions": [{"path":"user.system","op":"eq","value":true},{"path":"user.bad","op":"notexists"},{"match":"any","conditions":[{"path":"user.name","op":"exists"},{"path":"user.username","op":"exists"}]}]}}]`
-
-	patchExpectedChangeBarResult = `{"foo":"fighters"}`
+	patchFooBarPayload               = `{"foo":"bar"}`
+	patchFooBarNestedPayload         = `{"stuff":{"foo":"bar"}}`
+	patchFooBarDeepNestedPayload     = `{"stuff":{"morestuff":{"foo":"bar"}}}`
+	patchReplaceBarRules             = `[{"actions":[{"op":"replace","path":"foo","value":"fighters"}],"condition":{"path":"foo","op":"eq","value":"bar"}}]`
+	patchFooFightersResult           = `{"foo":"fighters"}`
+	patchFooFightersNestedResult     = `{"stuff":{"foo":"fighters"}}`
+	patchFooFightersDeepNestedResult = `{"stuff":{"morestuff":{"foo":"fighters"}}}`
 )
 
 var patchTests = []struct {
@@ -31,63 +26,67 @@ var patchTests = []struct {
 	expectedResult string
 	expectedError  error
 }{
-	//	{
-	//		"No Rules",
-	//		"",
-	//		"[{}]",
-	//		simplePayload,
-	//		false,
-	//		fmt.Errorf("No rules found"),
-	//	},
-	//	{
-	//		"Bad Payload",
-	//		"",
-	//		fooEQBarRules,
-	//		"yup",
-	//		false,
-	//		fmt.Errorf("payload must be a json object or a json array of objects"),
-	//	},
+//		{
+//			"No Rules",
+//			"",
+//			"[{}]",
+//			simplePayload,
+//			false,
+//			fmt.Errorf("No rules found"),
+//		},
+//		{
+//			"Bad Payload",
+//			"",
+//			fooEQBarRules,
+//			"yup",
+//			false,
+//			fmt.Errorf("payload must be a json object or a json array of objects"),
+//		},
 	{
-		"Root Level",
+		"Replace Root Level",
 		"",
-		patchChangeBarRules,
-		patchChangeBarPayload,
+		patchReplaceBarRules,
+		patchFooBarPayload,
 		true,
-		patchExpectedChangeBarResult,
+		patchFooFightersResult,
 		nil,
 	},
-	//	{
-	//		"Array Root Level",
-	//		"",
-	//		fooEQBarRules,
-	//		"[" + simplePayload + "]",
-	//		true,
-	//		nil,
-	//	},
-	//	{
-	//		"Nested Root",
-	//		"stuff",
-	//		fooEQBarRules,
-	//		nestedPayload,
-	//		true,
-	//		nil,
-	//	},
-	//	{
-	//		"Deep Nested Root",
-	//		"stuff.morestuff",
-	//		fooEQBarRules,
-	//		deepNestedPayload,
-	//		true,
-	//		nil,
-	//	},
-	//	{
-	//		"Missing Root",
-	//		"notfound",
-	//		fooEQBarRules,
-	//		nestedPayload,
-	//		false,
-	//		fmt.Errorf("root object not found at path 'notfound'"),
-	//	},
+	{
+		"Replace Array Root Level",
+		"",
+		patchReplaceBarRules,
+		"[" + patchFooBarPayload + "]",
+		true,
+		"[" + patchFooFightersResult + "]",
+		nil,
+	},
+	{
+		"Replace Nested Root",
+		"stuff",
+		patchReplaceBarRules,
+		patchFooBarNestedPayload,
+		true,
+		patchFooFightersNestedResult,
+		nil,
+	},
+	{
+		"Replace Deep Nested Root",
+		"stuff.morestuff",
+		patchReplaceBarRules,
+		patchFooBarDeepNestedPayload,
+		true,
+		patchFooFightersDeepNestedResult,
+		nil,
+	},
+	{
+		"Replace Missing Root",
+		"notfound",
+		patchReplaceBarRules,
+		patchFooBarPayload,
+		false,
+		"",
+		fmt.Errorf("root object not found at path 'notfound'"),
+	},
 	//	{
 	//		"System Bob Name",
 	//		"website",
