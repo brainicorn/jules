@@ -10,36 +10,36 @@ var delTests = []struct {
 	data           map[string]interface{}
 	expectedDelete bool
 }{
-		{
-			"Root Level Value",
-			"foo",
-			map[string]interface{}{"foo": "bar"},
-			true,
-		},
-		{
-			"Deeply Nested Value",
-			"foo.doo.moo.loo",
-			map[string]interface{}{"foo": map[string]interface{}{"doo": map[string]interface{}{"moo": map[string]interface{}{"loo": "bar"}}}},
-			true,
-		},
-		{
-			"Missing Root Path",
-			"moo.foo.loo",
-			map[string]interface{}{"foo": map[string]interface{}{"loo": "bar"}},
-			false,
-		},
 	{
+		"Root Level Value",
+		"foo",
+		map[string]interface{}{"foo": "bar"},
+		true,
+	},
+	{
+		"Deeply Nested Value",
+		"foo.doo.moo.loo",
+		map[string]interface{}{"foo": map[string]interface{}{"doo": map[string]interface{}{"moo": map[string]interface{}{"loo": "bar"}}}},
+		true,
+	},
+	{
+		"Missing Root Path",
+		"moo.foo.loo",
+		map[string]interface{}{"foo": map[string]interface{}{"loo": "bar"}},
+		false,
+	},
+	{
+		"Deeply Nested Object Array Value",
+		"foo.doo.moo.loo[0].name",
+		map[string]interface{}{"foo": map[string]interface{}{"doo": map[string]interface{}{"moo": map[string]interface{}{"loo": []interface{}{map[string]interface{}{"name": "bar"}}}}}},
+		true,
+	},
+{
 		"Non-Object Array",
 		"foo[3]",
 		map[string]interface{}{"foo": []interface{}{"la", "fa", "bar", "ja"}},
 		true,
 	},
-		{
-			"Deeply Nested Object Array Value",
-			"foo.doo.moo.loo[0].name",
-			map[string]interface{}{"foo": map[string]interface{}{"doo": map[string]interface{}{"moo": map[string]interface{}{"loo": []interface{}{map[string]interface{}{"name": "bar"}}}}}},
-			true,
-		},
 }
 
 func TestDeleteFromMap(t *testing.T) {

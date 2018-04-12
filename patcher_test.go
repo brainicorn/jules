@@ -12,9 +12,13 @@ const (
 	patchFooBarNestedPayload         = `{"stuff":{"foo":"bar"}}`
 	patchFooBarDeepNestedPayload     = `{"stuff":{"morestuff":{"foo":"bar"}}}`
 	patchReplaceBarRules             = `[{"actions":[{"op":"replace","path":"foo","value":"fighters"}],"condition":{"path":"foo","op":"eq","value":"bar"}}]`
+	patchAddDogRules                 = `[{"actions":[{"op":"add","path":"my.pet.dog","value":true}],"condition":{"path":"foo","op":"eq","value":"bar"}}]`
+	patchAddPetsRules                = `[{"actions":[{"op":"add","path":"my.pets[-]","value":"dog"}],"condition":{"path":"foo","op":"eq","value":"bar"}}]`
 	patchFooFightersResult           = `{"foo":"fighters"}`
 	patchFooFightersNestedResult     = `{"stuff":{"foo":"fighters"}}`
 	patchFooFightersDeepNestedResult = `{"stuff":{"morestuff":{"foo":"fighters"}}}`
+	patchDogResult                   = `{"foo":"bar","my":{"pet":{"dog":true}}}`
+	patchPetsResult                  = `{"foo":"bar","my":{"pets":["dog"]}}`
 )
 
 var patchTests = []struct {
@@ -26,22 +30,22 @@ var patchTests = []struct {
 	expectedResult string
 	expectedError  error
 }{
-//		{
-//			"No Rules",
-//			"",
-//			"[{}]",
-//			simplePayload,
-//			false,
-//			fmt.Errorf("No rules found"),
-//		},
-//		{
-//			"Bad Payload",
-//			"",
-//			fooEQBarRules,
-//			"yup",
-//			false,
-//			fmt.Errorf("payload must be a json object or a json array of objects"),
-//		},
+//	{
+//		"No Rules",
+//		"",
+//		"[{}]",
+//		simplePayload,
+//		false,
+//		fmt.Errorf("No rules found"),
+//	},
+//	{
+//		"Bad Payload",
+//		"",
+//		fooEQBarRules,
+//		"yup",
+//		false,
+//		fmt.Errorf("payload must be a json object or a json array of objects"),
+//	},
 	{
 		"Replace Root Level",
 		"",
@@ -87,46 +91,24 @@ var patchTests = []struct {
 		"",
 		fmt.Errorf("root object not found at path 'notfound'"),
 	},
-	//	{
-	//		"System Bob Name",
-	//		"website",
-	//		userNameRules,
-	//		systemBobNamePayload,
-	//		true,
-	//		nil,
-	//	},
-	//	{
-	//		"System Bob Username",
-	//		"website",
-	//		userNameRules,
-	//		systemBobUsernamePayload,
-	//		true,
-	//		nil,
-	//	},
-	//	{
-	//		"System No Name",
-	//		"website",
-	//		userNameRules,
-	//		systemNoNamePayload,
-	//		false,
-	//		nil,
-	//	},
-	//	{
-	//		"Human Bob Name",
-	//		"website",
-	//		userNameRules,
-	//		humanBobPayload,
-	//		false,
-	//		nil,
-	//	},
-	//	{
-	//		"Bad Bob User",
-	//		"website",
-	//		userNameRules,
-	//		badBobPayload,
-	//		false,
-	//		nil,
-	//	},
+	{
+		"Add Object Root Level",
+		"",
+		patchAddDogRules,
+		patchFooBarPayload,
+		true,
+		patchDogResult,
+		nil,
+	},
+	{
+		"Add To Array Root Level",
+		"",
+		patchAddPetsRules,
+		patchFooBarPayload,
+		true,
+		patchPetsResult,
+		nil,
+	},
 }
 
 func TestPatchAt(t *testing.T) {

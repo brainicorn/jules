@@ -1,6 +1,7 @@
 package jules
 
 import (
+	"fmt"
 	"math"
 	"reflect"
 	"regexp"
@@ -12,10 +13,15 @@ var (
 	aryRegex = regexp.MustCompile(`^([^.\s\[\]]*)(\[(\d*|[-])\]|$)`)
 )
 
-func lastParentAndChildToken(key string, data map[string]interface{}) (interface{}, string) {
+func getLastParentAndChildToken(key string, data map[string]interface{}) (interface{}, string) {
+	return lastParentAndChildToken(key, data, false)
+}
+
+func lastParentAndChildToken(key string, data map[string]interface{}, create bool) (interface{}, string) {
 	var parent interface{}
 	var parentPath string
 	var lastToken string
+	var lastParentIsSlice bool
 
 	parent = data
 
@@ -27,30 +33,53 @@ func lastParentAndChildToken(key string, data map[string]interface{}) (interface
 
 	parentPath = key[0:lastSep]
 	lastToken = key[lastSep+1:]
+
 	if strings.HasSuffix(lastToken, "]") {
+		lastParentIsSlice = true
 		lastToken = lastToken[:len(lastToken)-1]
+		if lastToken == "-" {
+			lastToken = strconv.Itoa(math.MaxInt64)
+		}
 	}
 
-	pathParts := strings.Split(parentPath, ".")
+	parentParts := strings.Split(parentPath, ".")
 Out:
-	for _, k := range pathParts {
-		key, aryIndex := getKeyAndIndex(k)
+	for i, k := range parentParts {
+		isLastPart := i >= len(parentParts)-1
+		partKey, aryIndex := getKeyAndIndex(k)
 
+		if isLastPart && lastParentIsSlice {
+			aryIndex, _ = strconv.Atoi(lastToken)
+		}
 		switch reflect.TypeOf(parent).Kind() {
 		case reflect.Map:
-			if obj, found := parent.(map[string]interface{})[key]; found {
-
-				if aryIndex > -1 && reflect.TypeOf(obj).Kind().String() == reflect.Slice.String() {
+			if obj, found := parent.(map[string]interface{})[partKey]; found {
+				if aryIndex > -1 && reflect.TypeOf(obj).Kind().String() == reflect.Slice.String() && !(isLastPart && lastParentIsSlice) {
 					parent = obj.([]interface{})[aryIndex]
 				} else {
 					parent = obj
+				}
+			} else if create {
+				if aryIndex < 0 {
+					// create a new object
+					newKid := make(map[string]interface{})
+					parent.(map[string]interface{})[partKey] = newKid
+					parent = newKid
+				} else {
+					newKid := []interface{}{}
+					parent.(map[string]interface{})[partKey] = newKid
+					parent = newKid
 				}
 			} else {
 				parent = nil
 				break Out
 			}
 		case reflect.Slice:
-			parent = parent.([]interface{})[aryIndex]
+			// ?? do i need a create here?
+			if aryIndex > -1 && !(isLastPart && lastParentIsSlice){
+				parent = parent.([]interface{})[aryIndex]
+			}
+
 		}
 	}
 
@@ -60,7 +89,7 @@ Out:
 func getFromMapByDotPath(key string, data map[string]interface{}) (interface{}, bool) {
 	var val interface{}
 
-	parent, childToken := lastParentAndChildToken(key, data)
+	parent, childToken := getLastParentAndChildToken(key, data)
 
 	if parent != nil {
 		switch reflect.TypeOf(parent).Kind() {
@@ -82,7 +111,7 @@ func getFromMapByDotPath(key string, data map[string]interface{}) (interface{}, 
 func addToMapByDotPath(key string, data map[string]interface{}, newval interface{}) bool {
 	var added bool
 
-	parent, childToken := lastParentAndChildToken(key, data)
+	parent, childToken := lastParentAndChildToken(key, data, true)
 
 	if parent != nil {
 		switch reflect.TypeOf(parent).Kind() {
@@ -101,6 +130,8 @@ func addToMapByDotPath(key string, data map[string]interface{}, newval interface
 				copy(ps[i+1:], ps[i:])
 				ps[i] = newval
 				added = true
+			} else {
+				fmt.Println("WTF? ", i)
 			}
 
 			if added {
@@ -117,7 +148,7 @@ func addToMapByDotPath(key string, data map[string]interface{}, newval interface
 func replaceInMapByDotPath(key string, data map[string]interface{}, newval interface{}) bool {
 	var replaced bool
 
-	parent, childToken := lastParentAndChildToken(key, data)
+	parent, childToken := getLastParentAndChildToken(key, data)
 
 	if parent != nil {
 		switch reflect.TypeOf(parent).Kind() {
@@ -171,8 +202,7 @@ func copyInMapByDotPath(from, to string, data map[string]interface{}) bool {
 func deleteFromMapByDotPath(key string, data map[string]interface{}) bool {
 	var baleeted bool
 
-	parent, childToken := lastParentAndChildToken(key, data)
-
+	parent, childToken := getLastParentAndChildToken(key, data)
 	if parent != nil {
 		switch reflect.TypeOf(parent).Kind() {
 		case reflect.Map:
