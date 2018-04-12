@@ -94,13 +94,11 @@ func applyPatchRules(root map[string]interface{}, rules JuleSet) bool {
 
 		if len(rule.Actions) > 0 && hasConditions(rule.Condition) {
 			applyActions, _ = matchCompositeOrCondition(root, rule.Condition)
-			fmt.Println(fmt.Sprintf("conditions met? %t", applyActions))
 		}
 
 		if applyActions {
 			for _, action := range rule.Actions {
 				//TODO do something with errors
-				fmt.Println(fmt.Sprintf("applying action: '%+v'", action))
 				patched, _ := applyPatch(root, action)
 
 				if patched {
@@ -119,17 +117,11 @@ func applyPatch(root map[string]interface{}, action Action) (bool, error) {
 
 	switch action.(type) {
 	case ValueAction:
-	fmt.Println("value...")
 		patched, err = applyValuePatch(root, action.(ValueAction))
 	case PathAction:
-	fmt.Println("path...")
 		patched, err = applyPathPatch(root, action.(PathAction))
 	case FromToAction:
-	fmt.Println("from...")
 		patched, err = applyFromToPatch(root, action.(FromToAction))
-
-	default:
-	fmt.Println(fmt.Sprintf("type: %+V", action))
 	}
 
 	return patched, err
@@ -140,7 +132,6 @@ func applyValuePatch(root map[string]interface{}, action ValueAction) (bool, err
 
 	switch action.Operation {
 	case "add":
-		fmt.Println("adding...")
 		patched = addToMapByDotPath(action.Path, root, action.Value)
 	case "replace":
 		patched = replaceInMapByDotPath(action.Path, root, action.Value)
