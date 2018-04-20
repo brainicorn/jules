@@ -12,7 +12,7 @@
             "title": "CompositeOrCondition is the base interface for a set of conditions.",
             "anyOf": [
               {
-                "$ref": "#"
+                "$ref": "#/definitions/github_com-brainicorn-jules-Composite"
               },
               {
                 "$ref": "#/definitions/github_com-brainicorn-jules-Condition"
@@ -101,7 +101,10 @@
             }
           ]
         }
-      }
+      },
+      "required": [
+        "condition"
+      ]
     },
     "github_com-brainicorn-jules-PathAction": {
       "type": "object",

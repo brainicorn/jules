@@ -77,38 +77,47 @@ func (m *JulesMatcher) MatchAt(payload json.RawMessage, rootPath string) (bool, 
 	}
 
 	if err == nil {
+	MatchBreak:
 		// loop over each object and grab our starting point
 		for _, obj := range objects {
-			root, rootFound := findRoot(obj, rootPath)
+			roots, rootFound := findRoots(obj, rootPath)
 
 			if !rootFound {
 				err = fmt.Errorf("root object not found at path '%s'", rootPath)
 			}
 
 			if err == nil {
-				// we have a root, let's see if we can match everything
-				allMatched = applyMatchRules(root, m.Rules)
+				rt := reflect.ValueOf(roots)
+				switch rt.Kind() {
+				case reflect.Slice:
+					for _, root := range roots.([]interface{}) {
+
+						rootMap, isMap := root.(map[string]interface{})
+						if isMap {
+							allMatched = applyMatchRules(rootMap, m.Rules)
+							if !allMatched {
+								break MatchBreak
+							}
+						} else {
+							allMatched = false
+							break MatchBreak
+						}
+
+					}
+
+				case reflect.Map:
+					allMatched = applyMatchRules(roots.(map[string]interface{}), m.Rules)
+
+				default:
+					allMatched = false
+					break MatchBreak
+				}
 			}
 		}
+
 	}
 
 	return allMatched, err
-}
-
-func findRoot(obj map[string]interface{}, rootPath string) (map[string]interface{}, bool) {
-	root := obj
-
-	if len(rootPath) > 0 {
-		if foundObj, wasFound := getFromMapByDotPath(rootPath, obj); wasFound {
-			if rootObj, ok := foundObj.(map[string]interface{}); ok {
-				root = rootObj
-			}
-		} else {
-			root = nil
-		}
-	}
-
-	return root, (root != nil)
 }
 
 func applyMatchRules(root map[string]interface{}, rules JuleSet) bool {

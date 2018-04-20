@@ -1,6 +1,9 @@
 package jules
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 var valueTests = []struct {
 	name           string
@@ -47,16 +50,23 @@ var valueTests = []struct {
 	{
 		"Root Level Array Deep Index Value",
 		"foo[2]",
-		map[string]interface{}{"foo": []interface{}{"la","fa","bar","ja"}},
+		map[string]interface{}{"foo": []interface{}{"la", "fa", "bar", "ja"}},
 		true,
 		"bar",
 	},
 	{
 		"Deeply Nested Array Deep Index Value",
 		"foo.doo.moo.loo[2]",
-		map[string]interface{}{"foo": map[string]interface{}{"doo": map[string]interface{}{"moo": map[string]interface{}{"loo": []interface{}{"la","fa","bar","ja"}}}}},
+		map[string]interface{}{"foo": map[string]interface{}{"doo": map[string]interface{}{"moo": map[string]interface{}{"loo": []interface{}{"la", "fa", "bar", "ja"}}}}},
 		true,
 		"bar",
+	},
+	{
+		"Deeply Nested Array No Index",
+		"foo.doo.moo.loo",
+		map[string]interface{}{"foo": map[string]interface{}{"doo": map[string]interface{}{"moo": map[string]interface{}{"loo": []interface{}{"la", "fa", "bar", "ja"}}}}},
+		true,
+		[]interface{}{"la", "fa", "bar", "ja"},
 	},
 	{
 		"Root Level Object Array Value",
@@ -82,7 +92,7 @@ func TestValueFromMap(t *testing.T) {
 			t.Errorf("%s - mismatch exists for path '%s': expected '%t', got '%t'", vt.name, vt.path, vt.expectedExists, exists)
 		}
 
-		if val != vt.expectedValue {
+		if !reflect.DeepEqual(val, vt.expectedValue) {
 			t.Errorf("%s - mismatch value for path '%s': expected '%+v', got '%+v'", vt.name, vt.path, vt.expectedValue, val)
 		}
 	}

@@ -86,6 +86,22 @@ Out:
 	return parent, lastToken
 }
 
+func findRoots(obj map[string]interface{}, rootPath string) (interface{}, bool) {
+	var root interface{}
+
+	root = obj
+
+	if len(rootPath) > 0 {
+		if foundObj, wasFound := getFromMapByDotPath(rootPath, obj); wasFound {
+			root = foundObj
+		} else {
+			root = nil
+		}
+	}
+
+	return root, (root != nil)
+}
+
 func getFromMapByDotPath(key string, data map[string]interface{}) (interface{}, bool) {
 	var val interface{}
 

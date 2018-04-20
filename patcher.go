@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"reflect"
 )
 
 type JulesPatcher struct {
@@ -66,17 +67,30 @@ func (p *JulesPatcher) PatchAt(payload json.RawMessage, rootPath string) (json.R
 	if err == nil {
 		// loop over each object and grab our starting point
 		for _, obj := range objects {
-			root, rootFound := findRoot(obj, rootPath)
+			roots, rootFound := findRoots(obj, rootPath)
 
 			if !rootFound {
 				err = fmt.Errorf("root object not found at path '%s'", rootPath)
 			}
 
 			if err == nil {
-				// we have a root, let's see if we can patch everything
-				anyPatched = applyPatchRules(root, p.Rules)
-			}
+				rt := reflect.ValueOf(roots)
+				switch rt.Kind() {
+				case reflect.Slice:
+					for _, root := range roots.([]interface{}) {
 
+						rootMap, isMap := root.(map[string]interface{})
+						if isMap {
+							if applyPatchRules(rootMap, p.Rules) {
+								anyPatched = true
+							}
+						}
+					}
+
+				case reflect.Map:
+					anyPatched = applyPatchRules(roots.(map[string]interface{}), p.Rules)
+				}
+			}
 		}
 	}
 

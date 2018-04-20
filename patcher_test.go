@@ -11,12 +11,14 @@ const (
 	patchFooBarPayload               = `{"foo":"bar"}`
 	patchFooBarNestedPayload         = `{"stuff":{"foo":"bar"}}`
 	patchFooBarDeepNestedPayload     = `{"stuff":{"morestuff":{"foo":"bar"}}}`
+	patchFooBarDeepArrayPayload      = `{"stuff":{"morestuff":[{"foo":"bar"},{"foo":"zar"},{"foo":"bar"},{"foo":"jar"}]}}`
 	patchReplaceBarRules             = `[{"actions":[{"op":"replace","path":"foo","value":"fighters"}],"condition":{"path":"foo","op":"eq","value":"bar"}}]`
 	patchAddDogRules                 = `[{"actions":[{"op":"add","path":"my.pet.dog","value":true}],"condition":{"path":"foo","op":"eq","value":"bar"}}]`
 	patchAddPetsRules                = `[{"actions":[{"op":"add","path":"my.pets[-]","value":"dog"}],"condition":{"path":"foo","op":"eq","value":"bar"}}]`
 	patchFooFightersResult           = `{"foo":"fighters"}`
 	patchFooFightersNestedResult     = `{"stuff":{"foo":"fighters"}}`
 	patchFooFightersDeepNestedResult = `{"stuff":{"morestuff":{"foo":"fighters"}}}`
+	patchFooFightersDeepArrayResult  = `{"stuff":{"morestuff":[{"foo":"fighters"},{"foo":"zar"},{"foo":"fighters"},{"foo":"jar"}]}}`
 	patchDogResult                   = `{"foo":"bar","my":{"pet":{"dog":true}}}`
 	patchPetsResult                  = `{"foo":"bar","my":{"pets":["dog"]}}`
 )
@@ -30,22 +32,24 @@ var patchTests = []struct {
 	expectedResult string
 	expectedError  error
 }{
-//	{
-//		"No Rules",
-//		"",
-//		"[{}]",
-//		simplePayload,
-//		false,
-//		fmt.Errorf("No rules found"),
-//	},
-//	{
-//		"Bad Payload",
-//		"",
-//		fooEQBarRules,
-//		"yup",
-//		false,
-//		fmt.Errorf("payload must be a json object or a json array of objects"),
-//	},
+	{
+		"No Rules",
+		"",
+		"[{}]",
+		patchFooBarPayload,
+		false,
+		"",
+		fmt.Errorf("No actions found"),
+	},
+	{
+		"Bad Payload",
+		"",
+		patchReplaceBarRules,
+		"yup",
+		false,
+		"",
+		fmt.Errorf("payload must be a json object or a json array of objects"),
+	},
 	{
 		"Replace Root Level",
 		"",
@@ -80,6 +84,15 @@ var patchTests = []struct {
 		patchFooBarDeepNestedPayload,
 		true,
 		patchFooFightersDeepNestedResult,
+		nil,
+	},
+	{
+		"Replace Deep Array Root",
+		"stuff.morestuff",
+		patchReplaceBarRules,
+		patchFooBarDeepArrayPayload,
+		true,
+		patchFooFightersDeepArrayResult,
 		nil,
 	},
 	{

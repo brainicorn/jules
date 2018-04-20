@@ -1,18 +1,14 @@
 package jules
 
 import (
-	"bytes"
 	"encoding/json"
-	"errors"
-	"fmt"
-
-	"github.com/xeipuuv/gojsonschema"
 )
 
 type JuleSet []Jule
 
 type Jule struct {
-	Actions   []Action  `json:"actions"`
+	Actions []Action `json:"actions"`
+	// @jsonSchema(required=true)
 	Condition CompositeOrCondition `json:"condition"`
 }
 
@@ -63,13 +59,14 @@ type FromToAction struct {
 // )
 type CompositeOrCondition interface{}
 
+type ConditionSet []CompositeOrCondition
 type Composite struct {
 
 	// @jsonSchema(required=true, pattern="^all$|^any$|^none$")
 	Match string `json:"match"`
 
 	// @jsonSchema(required=true, minitems=1)
-	Conditions []CompositeOrCondition `json:"conditions"`
+	Conditions ConditionSet `json:"conditions"`
 }
 
 type Condition struct {
@@ -203,22 +200,24 @@ func (cmp *Composite) UnmarshalJSON(data []byte) error {
 func validateJuleSet(descriptorBytes []byte) (JuleSet, error) {
 	var err error
 	var juleset JuleSet
-	var schemaValidationResult *gojsonschema.Result
 
-	schemaLoader := gojsonschema.NewStringLoader(GithubComBrainicornJulesJuleSet)
-	docLoader := gojsonschema.NewBytesLoader(descriptorBytes)
+	// BUG https://github.com/xeipuuv/gojsonschema/issues/198
+	//	var schemaValidationResult *gojsonschema.Result
 
-	schemaValidationResult, err = gojsonschema.Validate(schemaLoader, docLoader)
+	//	schemaLoader := gojsonschema.NewStringLoader(GithubComBrainicornJulesJuleSet)
+	//	docLoader := gojsonschema.NewBytesLoader(descriptorBytes)
 
-	if err == nil && len(schemaValidationResult.Errors()) > 0 {
-		var errBuf bytes.Buffer
-		errBuf.WriteString("Error validating jules json:")
-		for _, re := range schemaValidationResult.Errors() {
-			errBuf.WriteString(fmt.Sprintf("  - %s", re))
-		}
+	//	schemaValidationResult, err = gojsonschema.Validate(schemaLoader, docLoader)
 
-		err = errors.New(errBuf.String())
-	}
+	//	if err == nil && len(schemaValidationResult.Errors()) > 0 {
+	//		var errBuf bytes.Buffer
+	//		errBuf.WriteString("Error validating jules json:")
+	//		for _, re := range schemaValidationResult.Errors() {
+	//			errBuf.WriteString(fmt.Sprintf("  - %s", re))
+	//		}
+
+	//		err = errors.New(errBuf.String())
+	//	}
 
 	if err == nil {
 		err = json.Unmarshal(descriptorBytes, &juleset)
