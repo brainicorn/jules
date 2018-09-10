@@ -34,7 +34,7 @@ var delTests = []struct {
 		map[string]interface{}{"foo": map[string]interface{}{"doo": map[string]interface{}{"moo": map[string]interface{}{"loo": []interface{}{map[string]interface{}{"name": "bar"}}}}}},
 		true,
 	},
-{
+	{
 		"Non-Object Array",
 		"foo[3]",
 		map[string]interface{}{"foo": []interface{}{"la", "fa", "bar", "ja"}},
@@ -53,7 +53,7 @@ func TestDeleteFromMap(t *testing.T) {
 		val, exists := getFromMapByDotPath(dt.path, dt.data)
 
 		if deleted && exists {
-			t.Errorf("%s - value should have been deleted but exists for path '%+v'", dt.name, dt.path, val)
+			t.Errorf("%s - value '%s' should have been deleted but exists for path '%+v'", dt.name, dt.path, val)
 		}
 	}
 }
